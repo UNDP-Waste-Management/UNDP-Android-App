@@ -13,4 +13,15 @@
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
+    <style name="NavDrawerTextStyle" parent="Base.TextAppearance.AppCompat">
+        <item name="android:textColor">@color/purple_200</item>
+        <item name="android:textSize">21sp</item>
+        <item name="android:layout_marginBottom">0dp</item>
+    </style>
+
+    <style name="drawerTheme">
+        <item name="android:textColor">@color/purple_200</item>
+        <item name="android:layout_marginBottom">12dp</item>
+    </style>
+
 </resources>
