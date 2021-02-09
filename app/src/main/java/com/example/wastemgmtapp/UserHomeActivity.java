@@ -4,9 +4,15 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
 import androidx.drawerlayout.widget.DrawerLayout;
+
+import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
+
+import com.google.android.material.navigation.NavigationView;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
@@ -20,6 +26,7 @@ public class UserHomeActivity extends AppCompatActivity{
 
     private ActionBarDrawerToggle mToggle;
     private MapView mapView;
+    private final String TAG = UserHomeActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +36,10 @@ public class UserHomeActivity extends AppCompatActivity{
 
         Toolbar toolbar = findViewById(R.id.nav_action);
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        CardView cardRequest = findViewById(R.id.cardRequest);
+        CardView cardReview = findViewById(R.id.cardReview);
+        CardView cardReport = findViewById(R.id.cardReport);
+        CardView cardRecord = findViewById(R.id.cardRecord);
 
         setSupportActionBar(toolbar);
 
@@ -60,11 +71,40 @@ public class UserHomeActivity extends AppCompatActivity{
 
             }
         });
+
+        cardRequest.setOnClickListener(v -> {
+            Intent intent = new Intent(UserHomeActivity.this, RequestCollection.class);
+            startActivity(intent);
+        });
+
+        cardReview.setOnClickListener(v -> {
+            Intent intent = new Intent(UserHomeActivity.this, ReviewArea.class);
+            startActivity(intent);
+        });
+
+        cardReport.setOnClickListener(v -> {
+            Intent intent = new Intent(UserHomeActivity.this, ReportDumping.class);
+            startActivity(intent);
+        });
+
+        cardRecord.setOnClickListener(v -> {
+            Intent intent = new Intent(UserHomeActivity.this, RecordWaste.class);
+            startActivity(intent);
+        });
+
+        NavigationView navView = findViewById(R.id.user_navDrawer); // initiate a Navigation View
+        // implement setNavigationSelectedListener event
+        navView.setNavigationItemSelectedListener(menuItem -> {
+            Log.d(TAG, "onOptionsItemSelected: " + menuItem);
+            // add code here what you need on click of items.
+            return false;
+        });
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (mToggle.onOptionsItemSelected(item)){
+
             return true;
         }
 
