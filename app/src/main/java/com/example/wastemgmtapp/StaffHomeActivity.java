@@ -6,8 +6,10 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.widget.TextView;
 
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
@@ -23,6 +25,7 @@ public class StaffHomeActivity extends AppCompatActivity {
     private ActionBarDrawerToggle mToggle;
     private MapView mapRequests;
     private MapView mapTrash;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -31,6 +34,8 @@ public class StaffHomeActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.nav_action);
         DrawerLayout drawerLayout = findViewById(R.id.drawer_layout2);
+        TextView seeMoreRequests = findViewById(R.id.see_more_requests);
+        TextView seeMoreTrash = findViewById(R.id.see_more_trash);
 
         setSupportActionBar(toolbar);
 
@@ -83,6 +88,17 @@ public class StaffHomeActivity extends AppCompatActivity {
 
             }
         });
+
+        seeMoreTrash.setOnClickListener(v -> {
+            Intent intent = new Intent(StaffHomeActivity.this, ZoneTrashcans.class);
+            startActivity(intent);
+        });
+
+        seeMoreRequests.setOnClickListener(v -> {
+            Intent intent = new Intent(StaffHomeActivity.this, CollectionRequests.class);
+            startActivity(intent);
+        });
+
     }
 
     @Override
