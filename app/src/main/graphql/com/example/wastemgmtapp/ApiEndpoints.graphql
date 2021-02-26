@@ -1,0 +1,55 @@
+mutation CreateUser($userInput: UserInput!) {
+    createUser(userInput: $userInput) {
+        nationalID
+        fullName
+        latitude
+        longitude
+        phoneNumber
+    }
+}
+
+mutation LogIn($loginInput : LoginInput!) {
+    login(loginInput: $loginInput){
+        _id
+        token
+        tokenExpiration
+    }
+}
+
+query Users{
+    users{
+        _id
+        nationalID
+        fullName
+    }
+}
+
+mutation LogInAsStaff($loginStaffInput : LoginStaffInput!){
+    loginAsStaff(loginStaffInput : $loginStaffInput){
+        _id
+        token
+        tokenExpiration
+    }
+}
+
+query GetStaff($staffId: ID!){
+    staff(staffId: $staffId){
+        createdAt
+        creator {
+            _id
+            name
+        }
+        employeeID
+        fullName
+        location
+        phoneNumber
+        role
+        zone {
+            _id
+            name
+        }
+    }
+}
+
+
+
