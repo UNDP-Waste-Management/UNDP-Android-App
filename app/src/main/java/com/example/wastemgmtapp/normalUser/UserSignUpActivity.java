@@ -1,7 +1,7 @@
 package com.example.wastemgmtapp.normalUser;
 
-import androidx.appcompat.app.AppCompatActivity;
 
+import androidx.appcompat.app.AppCompatActivity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -18,6 +18,7 @@ import com.apollographql.apollo.ApolloClient;
 import com.apollographql.apollo.api.Error;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
+import com.example.wastemgmtapp.Common.GPSTracker;
 import com.example.wastemgmtapp.Common.LogInActivity;
 import com.example.wastemgmtapp.CreateUserMutation;
 import com.example.wastemgmtapp.R;
@@ -37,6 +38,13 @@ public class UserSignUpActivity extends AppCompatActivity {
             .serverUrl("https://waste-mgmt-api.herokuapp.com/graphql")
             .build();
     String TAG = UserSignUpActivity.class.getSimpleName();
+    double userLat, userLong;
+
+    // Initializing other items
+    // from layout file
+    //double lat = Double.parseDouble(null);
+    //double longitude = Double.parseDouble(null);
+    //int PERMISSION_ID = 44;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +59,19 @@ public class UserSignUpActivity extends AppCompatActivity {
 
         buttonCreateUser = findViewById(R.id.btn_sign);
         loading = findViewById(R.id.loads);
+
+        GPSTracker gpsTracker = new GPSTracker(UserSignUpActivity.this, UserSignUpActivity.this);
+        userLat = gpsTracker.getLatitude();
+        userLong = gpsTracker.getLongitude();
+
+        if(userLong == 0.0 && userLat == 0.0 ){
+            Toast.makeText(UserSignUpActivity.this,
+                    "Could not obtain location! Enable the gps location or network on your phone and try again!", Toast.LENGTH_LONG).show();
+        }
+
+        // method to get the location
+        //getLastLocation();
+
 
         TextView alreadyAccount = findViewById(R.id.already);
         alreadyAccount.setOnClickListener(new View.OnClickListener() {
@@ -75,7 +96,7 @@ public class UserSignUpActivity extends AppCompatActivity {
                 String id = inputID.getText().toString();
 
                 UserInput userInput = UserInput.builder()
-                        .fullName(name).nationalID(id).latitude(-15.786111).longitude(35.005833)
+                        .fullName(name).nationalID(id).latitude(userLat).longitude(userLong)
                         .phoneNumber(phone).password(password1).confirmPassword(password2).build();
                 apolloClient.mutate(new CreateUserMutation(userInput)).enqueue(new ApolloCall.Callback<CreateUserMutation.Data>() {
                     @Override
@@ -175,6 +196,17 @@ public class UserSignUpActivity extends AppCompatActivity {
             valid = false;
         }
 
+        if((userLat == Double.parseDouble(null)  || userLong ==  Double.parseDouble(null) ||
+                (userLat == 0.0  || userLong ==  0.0))){
+            Toast.makeText(UserSignUpActivity.this,
+                    "Location details empty! Enable location and network and try again!", Toast.LENGTH_LONG)
+                    .show();
+            valid = false;
+        }
+
         return valid;
     }
+
+
+
 }
