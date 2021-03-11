@@ -2,11 +2,13 @@ package com.example.wastemgmtapp.normalUser;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -23,7 +25,6 @@ import com.apollographql.apollo.api.Error;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
 import com.example.wastemgmtapp.Common.GPSTracker;
-import com.example.wastemgmtapp.Common.LogInActivity;
 import com.example.wastemgmtapp.Common.SessionManager;
 import com.example.wastemgmtapp.R;
 import com.example.wastemgmtapp.UserQuery;
@@ -85,9 +86,9 @@ public class UserHomeActivity extends AppCompatActivity{
         NavigationView navView = findViewById(R.id.user_navDrawer); // initiate a Navigation View
 
         View headerView = navView.getHeaderView(0);
-        TextView text_support = (TextView) headerView.findViewById(R.id.text_support);
-        textUserName = (TextView) headerView.findViewById(R.id.userName);
-        text_support.setText("");
+        TextView text_support = headerView.findViewById(R.id.text_support);
+        textUserName = headerView.findViewById(R.id.userName);
+        text_support.setText("User");
 
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
@@ -195,11 +196,28 @@ public class UserHomeActivity extends AppCompatActivity{
         navView.setNavigationItemSelectedListener(menuItem -> {
             Log.d(TAG, "onOptionsItemSelected: " + menuItem);
             if(TextUtils.equals(menuItem.toString(), "Logout")){
-                Intent intent = new Intent(UserHomeActivity.this, LogInActivity.class);
-                startActivity(intent);
+                AlertDialog.Builder builder = new AlertDialog.Builder(UserHomeActivity.this);
+                builder.setTitle("Log Out").setMessage("Are you sure you want to log out?");
+
+                builder.setPositiveButton("Log Out", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        // User clicked OK button
+                        session.logoutUser();
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int id) {
+                        // User cancelled the dialog
+                        dialog.cancel();
+                    }
+                });
+                builder.show(); //show the alert dialog
+
+                //Intent intent = new Intent(UserHomeActivity.this, LogInActivity.class);
+                //startActivity(intent);
             } else if((TextUtils.equals(menuItem.toString(), "My Requests"))){
                 Intent intent = new Intent(UserHomeActivity.this, MyRequests.class);
-                //intent.putExtra("id", userID);
+                intent.putExtra("id", userID);
                 //intent.putExtra("lat", userLat);
                 //intent.putExtra("long", userLong);
                 startActivity(intent);
@@ -299,7 +317,7 @@ public class UserHomeActivity extends AppCompatActivity{
                                 Log.d(TAG, "zones fetched" + data.zones());
                                 ArrayList<Double> ratings = new ArrayList<>();
                                 ArrayList<String> locations = new ArrayList<>();
-                                ArrayList<String> lat = new ArrayList<>();
+                                ArrayList<Double> lat = new ArrayList<>();
                                 ArrayList<String> longitudes = new ArrayList<>();
                                 for(int i =0; i < data.zones().size(); i++){
                                     ratings.add(data.zones().get(i).averageRating());
@@ -316,7 +334,7 @@ public class UserHomeActivity extends AppCompatActivity{
 
                                 maxLocation = locations.get(maxIdx);
                                 maxRating = Collections.max(ratings);
-                                zoneLat = Double.parseDouble(lat.get(maxIdx));
+                                zoneLat = Double.parseDouble(String.valueOf(lat.get(maxIdx)));
                                 zoneLong = Double.parseDouble(longitudes.get(maxIdx));
 
                                 Log.d(TAG, "onResponse: " + zoneLat + "-" + zoneLong);
@@ -344,8 +362,11 @@ public class UserHomeActivity extends AppCompatActivity{
             @Override
             public void onFailure(@NotNull ApolloException e) {
                 Log.e("Apollo", "Error", e);
-                Toast.makeText(UserHomeActivity.this,
-                        "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                runOnUiThread(() -> {
+                    Toast.makeText(UserHomeActivity.this,
+                            "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                });
+
             }
         };
     }
@@ -395,8 +416,11 @@ public class UserHomeActivity extends AppCompatActivity{
             @Override
             public void onFailure(@NotNull ApolloException e) {
                 Log.e("Apollo", "Error", e);
-                Toast.makeText(UserHomeActivity.this,
-                        "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                runOnUiThread(() -> {
+                    Toast.makeText(UserHomeActivity.this,
+                            "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                });
             }
         };
 
