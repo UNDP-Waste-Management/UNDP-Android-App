@@ -1,6 +1,5 @@
 package com.example.wastemgmtapp.normalUser;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -15,7 +14,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -33,11 +32,6 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.material.navigation.NavigationView;
 import com.mapbox.mapboxsdk.Mapbox;
-import com.mapbox.mapboxsdk.camera.CameraPosition;
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
-import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.maps.MapView;
-import com.mapbox.mapboxsdk.maps.Style;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -52,13 +46,14 @@ import okhttp3.logging.HttpLoggingInterceptor;
 public class UserHomeActivity extends AppCompatActivity{
 
     private ActionBarDrawerToggle mToggle;
-    private MapView mapView;
     private final String TAG = UserHomeActivity.class.getSimpleName();
     double userLat, userLong;
     ApolloClient apolloClient;
-    TextView textUserName, locationName, ratingText;
     Double maxRating;
     String maxLocation;
+    TextView textUserName;
+    LinearLayout linearCollect, linearSorted, gotoSettings, gotoRequests, gotoInstitutions;
+    TextView collectNumber, sortedNumber;
     SessionManager session;
     FusedLocationProviderClient mFusedLocationClient;
     double zoneLat,zoneLong;
@@ -75,11 +70,13 @@ public class UserHomeActivity extends AppCompatActivity{
         CardView cardReview = findViewById(R.id.cardReview);
         CardView cardReport = findViewById(R.id.cardReport);
         CardView cardRecord = findViewById(R.id.cardRecord);
-
-        Button rate = findViewById(R.id.btn_rate);
-        Button share = findViewById(R.id.btn_share);
-        locationName = findViewById(R.id.locationName);
-        ratingText = findViewById(R.id.averageRating);
+        linearCollect = findViewById(R.id.trash_collect);
+        linearSorted = findViewById(R.id.sorted_waste);
+        collectNumber = findViewById(R.id.collNumber);
+        sortedNumber = findViewById(R.id.sortNumber);
+        gotoSettings = findViewById(R.id.gotoSettings);
+        gotoInstitutions = findViewById(R.id.gotoCompanies);
+        gotoRequests = findViewById(R.id.gotoRequests);
 
         session = new SessionManager(getApplicationContext());
 
@@ -125,22 +122,6 @@ public class UserHomeActivity extends AppCompatActivity{
         }
         Log.d(TAG, "Latitude: " + gpsTracker.getLatitude() +"-Longitude: "+ gpsTracker.getLongitude());
 
-
-        mapView = findViewById(R.id.mapView);
-        mapView.onCreate(savedInstanceState);
-
-        CameraPosition position = new CameraPosition.Builder()
-                .target(new LatLng(zoneLat, zoneLong)).zoom(15).tilt(20)
-                .build();
-        mapView.getMapAsync(mapboxMap -> mapboxMap.setStyle(Style.MAPBOX_STREETS, new Style.OnStyleLoaded() {
-            @Override
-            public void onStyleLoaded(@NonNull Style style) {
-                // Map is set up and the style has loaded. Now you can add data or make other map adjustments
-                mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(position), 10);
-
-            }
-        }));
-
         cardRequest.setOnClickListener(v -> {
             Intent intent = new Intent(UserHomeActivity.this, RequestCollection.class);
             intent.putExtra("id", userID);
@@ -173,23 +154,20 @@ public class UserHomeActivity extends AppCompatActivity{
             startActivity(intent);
         });
 
-        rate.setOnClickListener( view -> {
-            Intent intent = new Intent(UserHomeActivity.this, ReviewArea.class);
+        gotoRequests.setOnClickListener(view -> {
+            Intent intent = new Intent(UserHomeActivity.this, MyRequests.class);
             intent.putExtra("id", userID);
-            intent.putExtra("lat", userLat);
-            intent.putExtra("long", userLong);
             startActivity(intent);
         });
 
-        share.setOnClickListener( view -> {
-            Intent sendIntent = new Intent();
-            sendIntent.setAction(Intent.ACTION_SEND);
-            sendIntent.putExtra(Intent.EXTRA_TEXT,
-                    maxLocation + " is the cleanest zone in the city with a Rating of " + maxRating+"!");
-            sendIntent.setType("text/plain");
+        gotoInstitutions.setOnClickListener(view ->{
+            Intent intent = new Intent(UserHomeActivity.this, InstitutionsActivity.class);
+            intent.putExtra("id", userID);
+            startActivity(intent);
+        });
 
-            Intent shareIntent = Intent.createChooser(sendIntent, "Share News");
-            startActivity(shareIntent);
+        gotoSettings.setOnClickListener(v -> {
+
         });
 
         // implement setNavigationSelectedListener event
@@ -215,11 +193,11 @@ public class UserHomeActivity extends AppCompatActivity{
 
                 //Intent intent = new Intent(UserHomeActivity.this, LogInActivity.class);
                 //startActivity(intent);
-            } else if((TextUtils.equals(menuItem.toString(), "My Requests"))){
-                Intent intent = new Intent(UserHomeActivity.this, MyRequests.class);
+            } else if((TextUtils.equals(menuItem.toString(), "Request Collection"))){
+                Intent intent = new Intent(UserHomeActivity.this, RequestCollection.class);
                 intent.putExtra("id", userID);
-                //intent.putExtra("lat", userLat);
-                //intent.putExtra("long", userLong);
+                intent.putExtra("lat", userLat);
+                intent.putExtra("long", userLong);
                 startActivity(intent);
             }else if((TextUtils.equals(menuItem.toString(), "Report Illegal Waste"))){
                 Intent intent = new Intent(UserHomeActivity.this, ReportDumping.class);
@@ -248,48 +226,6 @@ public class UserHomeActivity extends AppCompatActivity{
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        mapView.onStart();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        mapView.onResume();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mapView.onPause();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
-        mapView.onStop();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        mapView.onSaveInstanceState(outState);
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mapView.onLowMemory();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mapView.onDestroy();
     }
 
     public ApolloCall.Callback<ZonesQuery.Data> zonesQuery(){
@@ -328,9 +264,9 @@ public class UserHomeActivity extends AppCompatActivity{
 
                                 Double maxVal = Collections.max(ratings);
                                 int maxIdx = ratings.indexOf(maxVal);
-                                ratingText.setText("Rating : " + maxVal);
+                                //ratingText.setText("Rating : " + maxVal);
                                 String locale = locations.get(maxIdx);
-                                locationName.setText(locale);
+                                //locationName.setText(locale);
 
                                 maxLocation = locations.get(maxIdx);
                                 maxRating = Collections.max(ratings);
