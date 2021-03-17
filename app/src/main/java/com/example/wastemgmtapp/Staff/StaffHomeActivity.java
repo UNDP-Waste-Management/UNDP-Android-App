@@ -23,13 +23,10 @@ import com.apollographql.apollo.api.Error;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
 import com.example.wastemgmtapp.Common.GPSTracker;
-import com.example.wastemgmtapp.Common.LogInActivity;
 import com.example.wastemgmtapp.Common.SessionManager;
 import com.example.wastemgmtapp.GetStaffQuery;
 import com.example.wastemgmtapp.R;
-import com.example.wastemgmtapp.UserQuery;
-import com.example.wastemgmtapp.normalUser.ReportDumping;
-import com.example.wastemgmtapp.normalUser.UserHomeActivity;
+import com.example.wastemgmtapp.Common.SettingsActivity;
 import com.google.android.material.navigation.NavigationView;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
@@ -188,6 +185,9 @@ public class StaffHomeActivity extends AppCompatActivity {
                 startActivity(intent);
             }else if((TextUtils.equals(menuItem.toString(), "Settings"))){
                 //going to the settings activity later on
+                Intent intent = new Intent(StaffHomeActivity.this, SettingsActivity.class);
+                intent.putExtra("id", userID);
+                startActivity(intent);
             }
             // add code here what you need on click of items.
             return false;
