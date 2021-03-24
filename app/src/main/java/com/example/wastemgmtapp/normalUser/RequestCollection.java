@@ -40,15 +40,20 @@ import static com.example.wastemgmtapp.type.TrashCollectionInput.builder;
 
 public class RequestCollection extends AppCompatActivity {
 
+    private final String[] wasteTypes = { "Select Trash Type",
+            "Plastic Bottles", "Rubber Waste", "Glass Waste","Thin Plastics", "Recyclable Cans", "Other Waste"};
+    String selectedWasteType;
+
     ArrayList<String> companyNames = new ArrayList<>();
     ArrayList<String> companyIDs = new ArrayList<>();
     String TAG = RequestCollection.class.getSimpleName();
     ApolloClient apolloClient;
     String selectedID;
-    EditText inputAmount, inputLocation;
+    EditText inputAmount, inputLocation, inputOther;
     Button buttonSend;
     ProgressBar loading, fetchLoading;
-    Spinner companySpinner;
+    Spinner companySpinner, wasteSpinner;
+    boolean other = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +63,12 @@ public class RequestCollection extends AppCompatActivity {
         buttonSend = findViewById(R.id.btn_request);
         inputAmount = findViewById(R.id.inputAmount);
         inputLocation = findViewById(R.id.input_loc);
+        inputOther = findViewById(R.id.inputOther);
         loading = findViewById(R.id.loads);
         companySpinner = findViewById(R.id.companySpinner);
         Toolbar toolbar = findViewById(R.id.reqToolbar);
         fetchLoading = findViewById(R.id.loading);
+        wasteSpinner = findViewById(R.id.wasteSpinner);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true); //show the back button on the toolbar
         getSupportActionBar().setDisplayShowHomeEnabled(true);
@@ -109,6 +116,30 @@ public class RequestCollection extends AppCompatActivity {
             }
         });
 
+        //add the list to the dropdown item in the dialog view
+        ArrayAdapter<String> adapter2 = new ArrayAdapter<>(RequestCollection.this, R.layout.spinner_item, wasteTypes);
+        adapter2.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        wasteSpinner.setAdapter(adapter2);
+        wasteSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                if(position != 0){
+                    selectedWasteType =  parent.getSelectedItem().toString();
+                    if(parent.getSelectedItem().toString().equals("Other Waste")){
+                        other = true;
+                        inputOther.setVisibility(View.VISIBLE);
+                    } else {
+                        other = false;
+                        inputOther.setVisibility(View.GONE);
+                    }
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
+
         buttonSend.setOnClickListener(view -> {
             if(!validate()){
                 Toast.makeText(RequestCollection.this,"Fields Cannot be empty!!!", Toast.LENGTH_SHORT)
@@ -118,11 +149,15 @@ public class RequestCollection extends AppCompatActivity {
                 Log.d(TAG, "fields: " + amount + location + selectedID);
             } else {
                 loading.setVisibility(View.VISIBLE);
+                if(other){
+                    selectedWasteType = inputOther.getText().toString();
+                }
                 String amount = inputAmount.getText().toString();
                 String location = inputLocation.getText().toString();
 
                 TrashCollectionInput trashCollectionInput = TrashCollectionInput.builder()
                         .amount(amount).creator(userID)
+                        .typeOfWaste(selectedWasteType)
                         .institution(selectedID).location(location)
                         .latitude(latitude).longitude(longitude)
                         .build();
@@ -147,17 +182,30 @@ public class RequestCollection extends AppCompatActivity {
             public void onResponse(@NotNull Response<WasteInstitutionsQuery.Data> response) {
                 WasteInstitutionsQuery.Data data = response.getData();
 
-                if(response.getErrors() == null){
+
 
                     if(data.wasteInstitutions() == null){
-                        Log.e("Apollo", "an Error occurred : " );
-                        runOnUiThread(() -> {
-                            // Stuff that updates the UI
-                            Toast.makeText(RequestCollection.this,
-                                    "an Error occurred : " , Toast.LENGTH_LONG).show();
-                            //errorText.setText();
-                            fetchLoading.setVisibility(View.GONE);
-                        });
+
+                        if(response.getErrors() == null){
+                            Log.e("Apollo", "an Error occurred : " );
+                            runOnUiThread(() -> {
+                                // Stuff that updates the UI
+                                Toast.makeText(RequestCollection.this,
+                                        "an Error occurred : " , Toast.LENGTH_LONG).show();
+                                //errorText.setText();
+                                fetchLoading.setVisibility(View.GONE);
+                            });
+
+                        } else{
+                            List<Error> error = response.getErrors();
+                            String errorMessage = error.get(0).getMessage();
+                            Log.e("Apollo", "an Error occurred : " + errorMessage );
+                            runOnUiThread(() -> {
+                                Toast.makeText(RequestCollection.this,
+                                        "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                                fetchLoading.setVisibility(View.GONE);
+                            });
+                        }
                     }else{
                         runOnUiThread(() -> {
                             Log.d(TAG, "institutions fetched" + data.wasteInstitutions());
@@ -171,18 +219,18 @@ public class RequestCollection extends AppCompatActivity {
                                 //companyIDs.add(company);
                             }
                         });
-                    }
 
-                } else{
-                    List<Error> error = response.getErrors();
-                    String errorMessage = error.get(0).getMessage();
-                    Log.e("Apollo", "an Error occurred : " + errorMessage );
-                    runOnUiThread(() -> {
-                        Toast.makeText(RequestCollection.this,
-                                "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
-                        fetchLoading.setVisibility(View.GONE);
-                    });
-                }
+                        if(response.getErrors() != null){
+                            List<Error> error = response.getErrors();
+                            String errorMessage = error.get(0).getMessage();
+                            Log.e(TAG, "an Error in institutions query : " + errorMessage );
+                            runOnUiThread(() -> {
+                                Toast.makeText(RequestCollection.this,
+                                        "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+
+                            });
+                        }
+                    }
 
             }
 
