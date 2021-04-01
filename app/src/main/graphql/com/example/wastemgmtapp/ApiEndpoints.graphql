@@ -222,30 +222,6 @@ mutation UpdateStaffPassword($updatePassword: ChangePasswordInput){
 query getTask($taskID : ID!){
     task(taskId: $taskID){
         _id
-        trashcollection{
-            _id
-            location
-            creator{
-                _id
-                fullName
-            }
-            amount
-            typeOfWaste
-            longitude
-            latitude
-        }
-        sortedWaste{
-            _id
-            creator{
-                _id
-                fullName
-            }
-            location
-            amount
-            typeOfWaste
-            longitude
-            latitude
-        }
         body
         createdAt
         staff{
@@ -259,21 +235,104 @@ query getTask($taskID : ID!){
 query getTasks{
     tasks{
         _id
-        trashcollection{
+        body
+        createdAt
+        staff{
             _id
-            creator{
-                _id
-            }
+            fullName
         }
+        completed
+    }
+}
 
+query getTaskSortedWastes {
+    taskSortedWastes{
+        _id
+        createdAt
         sortedWaste{
             _id
             creator{
                 _id
+                fullName
+                location
             }
+            amount
+            createdAt
         }
-        body
+        staff{
+            _id
+            fullName
+        }
+        completed
+    }
+}
+
+query getTaskTrashCollections {
+    taskTrashCollections{
+        _id
         createdAt
+        trashcollection{
+            _id
+            creator{
+                _id
+                fullName
+                location
+            }
+            amount
+            createdAt
+        }
+        staff{
+            _id
+            fullName
+        }
+        completed
+    }
+}
+
+query taskSortedWaste($taskID : ID!){
+    taskSortedWaste(taskSortedWastesId: $taskID){
+        _id
+        createdAt
+        sortedWaste{
+            _id
+            creator{
+                _id
+                fullName
+                location
+            }
+            amount
+            createdAt
+            latitude
+            longitude
+            location
+            typeOfWaste
+        }
+        staff{
+            _id
+            fullName
+        }
+        completed
+    }
+}
+
+query taskTrashCollection($taskID : ID!){
+    taskTrashCollection(taskTrashCollectionId: $taskID){
+        _id
+        createdAt
+        trashcollection{
+            _id
+            creator{
+                _id
+                fullName
+                location
+            }
+            amount
+            createdAt
+            latitude
+            longitude
+            location
+            typeOfWaste
+        }
         staff{
             _id
             fullName
@@ -285,19 +344,6 @@ query getTasks{
 subscription TaskAdded{
     taskAdded{
         _id
-        trashcollection{
-            _id
-            creator{
-                _id
-            }
-        }
-
-        sortedWaste{
-            _id
-            creator{
-                _id
-            }
-        }
         body
         createdAt
         staff{
@@ -351,6 +397,39 @@ query GetZoneTrashcans{
             _id
         }
     }
+}
+
+mutation UpdateTaskStatus($updateTaskInput : UpdateTaskInput){
+    updateTask(updateTaskInput: $updateTaskInput){
+        _id
+        completed
+    }
+}
+
+mutation DeleteTask($taskID : ID!){
+    deleteTask(taskId: $taskID)
+}
+
+mutation UpdateTaskSortedWaste($updateTaskInput : UpdateTaskSortedWasteInput){
+    updateTaskSortedWaste(updateTaskSortedWasteInput: $updateTaskInput){
+        _id
+        completed
+    }
+}
+
+mutation DeleteTaskSortedWaste($taskID : ID!){
+    deleteTaskSortedWaste(taskSortedWasteId: $taskID)
+}
+
+mutation UpdateTaskTrashcollection($updateTaskInput : UpdateTaskTrashCollectionInput){
+    updateTaskTrashCollection(updateTaskTrashCollectionInput: $updateTaskInput){
+        _id
+        completed
+    }
+}
+
+mutation DeleteTaskTrashcollection($taskID : ID!){
+    deleteTrashCollection(trashCollectionId: $taskID)
 }
 
 

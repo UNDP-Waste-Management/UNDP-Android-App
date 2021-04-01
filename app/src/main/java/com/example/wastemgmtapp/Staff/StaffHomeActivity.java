@@ -28,8 +28,11 @@ import com.apollographql.apollo.api.Error;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
 import com.example.wastemgmtapp.Common.GPSTracker;
+import com.example.wastemgmtapp.Common.LogInActivity;
 import com.example.wastemgmtapp.Common.SessionManager;
 import com.example.wastemgmtapp.GetStaffQuery;
+import com.example.wastemgmtapp.GetTaskSortedWastesQuery;
+import com.example.wastemgmtapp.GetTaskTrashCollectionsQuery;
 import com.example.wastemgmtapp.GetTasksQuery;
 import com.example.wastemgmtapp.GetZoneTrashcansQuery;
 import com.example.wastemgmtapp.R;
@@ -69,7 +72,8 @@ public class StaffHomeActivity extends AppCompatActivity {
     ProgressBar loading;
     AlertDialog dialog;
     String nameText, locationText, phoneNumberText, createdAtText, emailText;
-
+    int sumTasks = 0;
+    ArrayList<Object> tasks = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,6 +113,13 @@ public class StaffHomeActivity extends AppCompatActivity {
         HashMap<String, String> user = session.getUserDetails();
         userID = user.get(SessionManager.KEY_USERID);
 
+        Log.d(TAG, "userID: " + userID);
+        if(userID == null || TextUtils.isEmpty(userID)){
+            Intent i = new Intent(StaffHomeActivity.this, LogInActivity.class);
+            i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+
         apolloClient.query(new GetStaffQuery(userID)).enqueue(staffCallback());
 
         mToggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
@@ -121,8 +132,10 @@ public class StaffHomeActivity extends AppCompatActivity {
         userLat = gpsTracker.getLatitude();
         userLong = gpsTracker.getLongitude();
 
-
+        sumTasks = 0;
         apolloClient.query(new GetTasksQuery()).enqueue(taskCallback());
+        apolloClient.query(new GetTaskSortedWastesQuery()).enqueue(taskSortedCallback());
+        apolloClient.query(new GetTaskTrashCollectionsQuery()).enqueue(taskCollectCallback());
         apolloClient.query(new GetZoneTrashcansQuery()).enqueue(trashCallback());
 
         zoneTrashcans.setOnClickListener(view ->{
@@ -229,7 +242,6 @@ public class StaffHomeActivity extends AppCompatActivity {
             dialog = builder.create();
             dialog.show();
         });
-
     }
 
     public ApolloCall.Callback<GetStaffQuery.Data> staffCallback(){
@@ -238,57 +250,42 @@ public class StaffHomeActivity extends AppCompatActivity {
             public void onResponse(@NotNull Response<GetStaffQuery.Data> response) {
                 GetStaffQuery.Data data = response.getData();
 
-                    if(data.staff() == null){
+                try{
 
-                            if(response.getErrors() == null){
-                                Log.e(TAG, "an Error in staff query : " );
-                                runOnUiThread(() -> {
-                                    // Stuff that updates the UI
-                                    Toast.makeText(StaffHomeActivity.this,
-                                            "an Error occurred : " , Toast.LENGTH_LONG).show();
-                                    //errorText.setText();
-                                });
-                            } else{
-                                List<Error> error = response.getErrors();
-                                String errorMessage = error.get(0).getMessage();
-                                Log.e(TAG, "an Error in staff query : " + errorMessage );
-                                runOnUiThread(() -> {
-                                    Toast.makeText(StaffHomeActivity.this,
-                                            "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                    data.staff();
+                    runOnUiThread(() -> {
+                        Log.d(TAG, "staff fetched" + data.staff());
+                        textUserName.setText(data.staff().fullName());
+                        if(data.staff().zone() != null){
+                            text_support.setText("Zone: " + data.staff().zone().name());
+                            zoneID = data.staff().zone()._id();
+                        } else{
+                            text_support.setText("Zone: null");
+                        }
 
-                                });
-                            }
+                        locationText = data.staff().creator().location();
+                        emailText = data.staff().creator().email();
+                        createdAtText = data.staff().creator().createdAt();
+                        nameText = data.staff().creator().name();
+                        phoneNumberText = data.staff().creator().phoneNumber();
 
-                    }else{
+                    });
+
+                    if(response.getErrors() != null){
+                        List<Error> error = response.getErrors();
+                        String errorMessage = error.get(0).getMessage();
+                        Log.e(TAG, "an Error in staff query : " + errorMessage );
                         runOnUiThread(() -> {
-                            Log.d(TAG, "staff fetched" + data.staff());
-                            textUserName.setText(data.staff().fullName());
-                            if(data.staff().zone() != null){
-                                text_support.setText("Zone: " + data.staff().zone().name());
-                                zoneID = data.staff().zone()._id();
-                            } else{
-                                text_support.setText("Zone: null");
-                            }
-
-                            locationText = data.staff().creator().location();
-                            emailText = data.staff().creator().email();
-                            createdAtText = data.staff().creator().createdAt();
-                            nameText = data.staff().creator().name();
-                            phoneNumberText = data.staff().creator().phoneNumber();
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
 
                         });
-
-                        if(response.getErrors() != null){
-                            List<Error> error = response.getErrors();
-                            String errorMessage = error.get(0).getMessage();
-                            Log.e(TAG, "an Error in staff query : " + errorMessage );
-                            runOnUiThread(() -> {
-                                Toast.makeText(StaffHomeActivity.this,
-                                        "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
-
-                            });
-                        }
                     }
+
+                } catch (Exception e){
+                    e.printStackTrace();
+                }
+
             }
 
             @Override
@@ -325,23 +322,31 @@ public class StaffHomeActivity extends AppCompatActivity {
                             Log.e(TAG, "an Error in tasks query : " + errorMessage );
                             runOnUiThread(() -> {
                                 Toast.makeText(StaffHomeActivity.this,
-                                        "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                                        "task2: error occurred : " + errorMessage, Toast.LENGTH_SHORT).show();
 
                             });
                         }
                     }else{
                         runOnUiThread(() -> {
                             Log.d(TAG, "tasks fetched: " + data.tasks());
-                            ArrayList<Object> tasks = new ArrayList<>();
-                            if(!TextUtils.isEmpty(userID)){
-                                for(int i=0; i < data.tasks().size(); i++){
-                                    if(userID.equals(data.tasks().get(i).staff()._id()) && (data.tasks().get(i).completed() == false)){
-                                        tasks.add(data.tasks().get(i));
+                            try{
+                                if(!TextUtils.isEmpty(userID) && data.tasks().get(0) != null){
+                                    for(int i=0; i < data.tasks().size(); i++){
+                                        if(userID.equals(data.tasks().get(i).staff()._id()) && (data.tasks().get(i).completed() == false)){
+                                            tasks.add(data.tasks().get(i));
+                                        }
                                     }
                                 }
+
+                                sumTasks = sumTasks + tasks.size();
+                                Log.d(TAG, "sumTasks general: " + sumTasks+ "-" +tasks.size());
+                                taskNumber.setText(String.valueOf(tasks.size()));
+                            } catch (Exception e){
+                                e.printStackTrace();
+                                Toast.makeText(StaffHomeActivity.this,
+                                        "task1: error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
                             }
 
-                            taskNumber.setText(String.valueOf(tasks.size()));
 
                         });
 
@@ -350,14 +355,12 @@ public class StaffHomeActivity extends AppCompatActivity {
                             String errorMessage = error.get(0).getMessage();
                             Log.e(TAG, "an Error in tasks query : " + errorMessage );
                             runOnUiThread(() -> {
-                                Toast.makeText(StaffHomeActivity.this,
-                                        "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                                //Toast.makeText(StaffHomeActivity.this,
+                                        //"an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
 
                             });
                         }
                     }
-
-
             }
 
             @Override
@@ -365,7 +368,147 @@ public class StaffHomeActivity extends AppCompatActivity {
                 Log.e(TAG, "Error", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
-                            "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            "tasks3: error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                });
+            }
+        };
+    }
+
+    public ApolloCall.Callback<GetTaskTrashCollectionsQuery.Data> taskCollectCallback(){
+        return new ApolloCall.Callback<GetTaskTrashCollectionsQuery.Data>() {
+            @Override
+            public void onResponse(@NotNull Response<GetTaskTrashCollectionsQuery.Data> response) {
+                GetTaskTrashCollectionsQuery.Data data = response.getData();
+
+                if(data.taskTrashCollections() == null){
+
+                    if(response.getErrors() == null){
+                        Log.e(TAG, "an unknown Error in tasks query : " );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "an unknown Error occurred : " , Toast.LENGTH_LONG).show();
+
+                        });
+                    } else{
+                        List<Error> error = response.getErrors();
+                        String errorMessage = error.get(0).getMessage();
+                        Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task collect1: error occurred : " + errorMessage, Toast.LENGTH_SHORT).show();
+
+                        });
+                    }
+                }else{
+                    runOnUiThread(() -> {
+                        Log.d(TAG, "tasks collections fetched: " + data.taskTrashCollections());
+                        if(!TextUtils.isEmpty(userID)){
+                            for(int i=0; i < data.taskTrashCollections().size(); i++){
+                                if(userID.equals(data.taskTrashCollections().get(i).staff()._id()) && (data.taskTrashCollections().get(i).completed() == false)){
+                                    tasks.add(data.taskTrashCollections().get(i));
+                                }
+                            }
+                        }
+
+                        sumTasks = sumTasks + tasks.size();
+                        Log.d(TAG, "sumTasks trash collect: " + sumTasks+ "-" +tasks.size());
+                        taskNumber.setText(String.valueOf(tasks.size()));
+
+                    });
+
+                    if(response.getErrors() != null){
+                        List<Error> error = response.getErrors();
+                        String errorMessage = error.get(0).getMessage();
+                        Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task collect2: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+
+                        });
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(@NotNull ApolloException e) {
+                Log.e(TAG, "Error", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(StaffHomeActivity.this,
+                            "task collect3: error occurred  : " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                });
+            }
+        };
+    }
+
+    public ApolloCall.Callback<GetTaskSortedWastesQuery.Data> taskSortedCallback(){
+        return new ApolloCall.Callback<GetTaskSortedWastesQuery.Data>() {
+            @Override
+            public void onResponse(@NotNull Response<GetTaskSortedWastesQuery.Data> response) {
+                GetTaskSortedWastesQuery.Data data = response.getData();
+
+                if(data.taskSortedWastes() == null){
+
+                    if(response.getErrors() == null){
+                        Log.e(TAG, "an unknown Error in tasks query : " );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task sorted: error occurred : " , Toast.LENGTH_LONG).show();
+
+                        });
+                    } else{
+                        List<Error> error = response.getErrors();
+                        String errorMessage = error.get(0).getMessage();
+                        Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task sorted: error occurred  : " + errorMessage, Toast.LENGTH_SHORT).show();
+
+                        });
+                    }
+                }else{
+                    runOnUiThread(() -> {
+                        Log.d(TAG, "tasks Sorted fetched: " + data.taskSortedWastes());
+                        try{
+                            if(!TextUtils.isEmpty(userID)){
+                                for(int i=0; i < data.taskSortedWastes().size(); i++){
+                                    if(userID.equals(data.taskSortedWastes().get(i).staff()._id()) && (data.taskSortedWastes().get(i).completed() == false)){
+                                        tasks.add(data.taskSortedWastes().get(i));
+                                    }
+                                }
+                            }
+
+                            sumTasks = sumTasks + tasks.size();
+                            Log.d(TAG, "sumTasks sorted: " + sumTasks+ "-" +tasks.size());
+                            taskNumber.setText(String.valueOf(tasks.size()));
+                        } catch (Exception e){
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task sorted: error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                        }
+
+
+                    });
+
+                    if(response.getErrors() != null){
+                        List<Error> error = response.getErrors();
+                        String errorMessage = error.get(0).getMessage();
+                        Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
+                        runOnUiThread(() -> {
+                            Toast.makeText(StaffHomeActivity.this,
+                                    "task sorted: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+
+                        });
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(@NotNull ApolloException e) {
+                Log.e(TAG, "Error Sorted", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(StaffHomeActivity.this,
+                            "task sorted: error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
 
                 });
             }
@@ -384,7 +527,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         Log.e(TAG, "an Error in trashcans query : " );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
-                                    "an Error occurred : " , Toast.LENGTH_LONG).show();
+                                    "zone: Error occurred : " , Toast.LENGTH_LONG).show();
                         });
                     } else{
                         List<Error> error = response.getErrors();
@@ -392,7 +535,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         Log.e(TAG, "an Error in trashcans query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
-                                    "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                                    "zone: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
 
                         });
                     }
@@ -418,7 +561,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         Log.e(TAG, "an Error in staff query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
-                                    "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
+                                    "zone: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
 
                         });
                     }
@@ -430,7 +573,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                 Log.e(TAG, "Error", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
-                            "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            "zone: error : " + e.getMessage(), Toast.LENGTH_LONG).show();
 
                 });
             }
