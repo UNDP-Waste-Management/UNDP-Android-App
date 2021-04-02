@@ -94,9 +94,13 @@ public class StaffHomeActivity extends AppCompatActivity {
 
         NavigationView navView = findViewById(R.id.staff_navDrawer); // initiate a Navigation View
 
-        View headerView = navView.getHeaderView(0);
-        text_support = headerView.findViewById(R.id.text_support);
-        textUserName = headerView.findViewById(R.id.userName);
+        try{
+            View headerView = navView.getHeaderView(0);
+            text_support = headerView.findViewById(R.id.text_support);
+            textUserName = headerView.findViewById(R.id.userName);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
 
         session = new SessionManager(getApplicationContext());
 
@@ -205,6 +209,7 @@ public class StaffHomeActivity extends AppCompatActivity {
         cardTrashcans.setOnClickListener(view -> {
             Intent intent = new Intent(StaffHomeActivity.this, ZoneTrashcans.class);
             intent.putExtra("id", userID);intent.putExtra("lat", userLat);intent.putExtra("long", userLong);
+            intent.putExtra("zoneID", zoneID);
             startActivity(intent);
         });
 
@@ -546,6 +551,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         if(!TextUtils.isEmpty(zoneID)){
                             for(int i=0; i < data.trashcans().size(); i++){
                                 if(zoneID.equals(data.trashcans().get(i).zone()._id())){
+                                    Log.d(TAG, "onResponse: " + data.trashcans().get(i));
                                     cans.add(data.trashcans().get(i));
                                 }
                             }
