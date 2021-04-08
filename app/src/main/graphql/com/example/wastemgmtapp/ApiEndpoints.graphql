@@ -108,10 +108,6 @@ query GetStaff($staffId: ID!){
         location
         phoneNumber
         role
-        zone {
-            _id
-            name
-        }
     }
 }
 
@@ -157,6 +153,15 @@ query GetSortedWasteNotifs{
     sortedWasteNotications{
         _id
         status
+        completed
+        sortedWaste{
+            _id
+            amount
+            location
+            createdAt
+            typeOfWaste
+            price
+        }
         institution{
             _id
             name
@@ -172,6 +177,14 @@ query GetCollectionNotifs{
     trashCollectionNotications{
         _id
         status
+        completed
+        trashcollection{
+            _id
+            amount
+            location
+            createdAt
+            typeOfWaste
+        }
         institution{
             _id
             name
@@ -180,6 +193,30 @@ query GetCollectionNotifs{
             _id
         }
         createdAt
+    }
+}
+
+mutation CreateSortedNotif($notifInput : NotificationSortedWasteInput){
+    createSortedWasteNotication(notificationSortedWasteInput: $notifInput ){
+        _id
+    }
+}
+
+mutation CreateCollectionNotif($notifInput : NotificationTrashCollectionInput){
+    createTrashCollectionNotication(notificationTrashCollectionInput: $notifInput ){
+        _id
+    }
+}
+
+mutation UpdateCollectionNotif($collectionID : UpdateTrashCollectionNoticationInput){
+    updateTrashCollectionNotication(updateTrashCollectionNoticationInput: $collectionID){
+        _id
+    }
+}
+
+mutation UpdateSortedWasteNotif($sortedID : UpdateSortedWasteNotificationInput){
+    updateSortedWasteNotification(updateSortedWasteNotificationInput: $sortedID){
+        _id
     }
 }
 
@@ -395,6 +432,9 @@ query GetZoneTrashcans{
         trashcanId
         zone{
             _id
+            creator{
+                _id
+            }
         }
     }
 }
@@ -414,6 +454,12 @@ mutation UpdateTaskSortedWaste($updateTaskInput : UpdateTaskSortedWasteInput){
     updateTaskSortedWaste(updateTaskSortedWasteInput: $updateTaskInput){
         _id
         completed
+        sortedWaste{
+            _id
+            institution{
+                _id
+            }
+        }
     }
 }
 
@@ -425,6 +471,12 @@ mutation UpdateTaskTrashcollection($updateTaskInput : UpdateTaskTrashCollectionI
     updateTaskTrashCollection(updateTaskTrashCollectionInput: $updateTaskInput){
         _id
         completed
+        trashcollection{
+            _id
+            institution{
+                _id
+            }
+        }
     }
 }
 
@@ -439,6 +491,9 @@ query GetTrashcans{
         zone{
             _id
             name
+            creator{
+                _id
+            }
         }
         status
         longitude
@@ -453,6 +508,9 @@ query GetTrashcan($canID : ID!){
         zone{
             _id
             name
+            creator{
+                _id
+            }
         }
         status
         longitude

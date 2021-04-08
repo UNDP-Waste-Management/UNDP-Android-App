@@ -21,6 +21,8 @@ import com.apollographql.apollo.exception.ApolloException;
 import com.example.wastemgmtapp.Common.SessionManager;
 import com.example.wastemgmtapp.GetStaffQuery;
 import com.example.wastemgmtapp.GetTaskSortedWastesQuery;
+import com.example.wastemgmtapp.GetTaskTrashCollectionsQuery;
+import com.example.wastemgmtapp.GetTasksQuery;
 import com.example.wastemgmtapp.GetTrashcansQuery;
 import com.example.wastemgmtapp.GetZoneTrashcansQuery;
 import com.example.wastemgmtapp.R;
@@ -40,13 +42,12 @@ import okhttp3.logging.HttpLoggingInterceptor;
 public class ZoneTrashcans extends AppCompatActivity {
 
     String userID;
-    private final ArrayList<String> sample = new ArrayList<>(Arrays.asList("one", "two", "three", "four", "five"));
     ApolloClient apolloClient;
     LinearLayout errorLayout, noItems;
     ProgressBar loadCans;
     RecyclerView trashRecyclerview;
     TrashRecyclerAdapter recyclerAdapter;
-    String zoneID;
+    String companyID;
     ArrayList<String> keyList = new ArrayList<>();
     ArrayList<String> nameList = new ArrayList<>();
     ArrayList<Double> statusList = new ArrayList<>();
@@ -71,9 +72,9 @@ public class ZoneTrashcans extends AppCompatActivity {
 
         Intent intent  = getIntent();
         userID = intent.getStringExtra("id");
-        zoneID = intent.getStringExtra("zoneID");
+        companyID = intent.getStringExtra("companyID");
 
-        Log.d(TAG, "IDs: " + userID + "-" + zoneID);
+        Log.d(TAG, "IDs: " + userID + "-" + companyID);
 
 
         loadCans.setVisibility(View.VISIBLE);
@@ -87,7 +88,22 @@ public class ZoneTrashcans extends AppCompatActivity {
                 .serverUrl("https://waste-mgmt-api.herokuapp.com/graphql")
                 .build();
 
+        keyList.clear();
+        statusList.clear();
+        zoneNameList.clear();
+        nameList.clear();
+        apolloClient.query(new GetTrashcansQuery()).enqueue(trashCallback());
 
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+
+        keyList.clear();
+        statusList.clear();
+        zoneNameList.clear();
+        nameList.clear();
         apolloClient.query(new GetTrashcansQuery()).enqueue(trashCallback());
 
     }
@@ -132,15 +148,20 @@ public class ZoneTrashcans extends AppCompatActivity {
                         noItems.setVisibility(View.GONE);
                         errorLayout.setVisibility(View.GONE);
                         Log.d(TAG, "trashcans fetched: " + data.trashcans());
-                        if(!TextUtils.isEmpty(zoneID)){
+                        if(!TextUtils.isEmpty(companyID)){
                             for(int i=0; i < data.trashcans().size(); i++){
-                                if(zoneID.equals(data.trashcans().get(i).zone()._id())){
+                                if(companyID.equals(data.trashcans().get(i).zone().creator()._id())){
                                     Log.d(TAG, "onResponse: " + data.trashcans().get(i));
                                     nameList.add(data.trashcans().get(i).trashcanId());
                                     statusList.add(data.trashcans().get(i).status());
                                     zoneNameList.add(data.trashcans().get(i).zone().name());
                                     keyList.add(data.trashcans().get(i)._id());
                                 }
+                            }
+
+                            Log.d(TAG, "tras: " + data.trashcans().size());
+                            if(data.trashcans().size() == 0){
+                                noItems.setVisibility(View.VISIBLE);
                             }
 
                             recyclerAdapter = new TrashRecyclerAdapter(ZoneTrashcans.this, nameList, statusList, zoneNameList, keyList);

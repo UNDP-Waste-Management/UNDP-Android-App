@@ -30,6 +30,8 @@ import com.apollographql.apollo.exception.ApolloException;
 import com.example.wastemgmtapp.Common.GPSTracker;
 import com.example.wastemgmtapp.Common.LogInActivity;
 import com.example.wastemgmtapp.Common.SessionManager;
+import com.example.wastemgmtapp.GetCollectionNotifsQuery;
+import com.example.wastemgmtapp.GetSortedWasteNotifsQuery;
 import com.example.wastemgmtapp.GetStaffQuery;
 import com.example.wastemgmtapp.GetTaskSortedWastesQuery;
 import com.example.wastemgmtapp.GetTaskTrashCollectionsQuery;
@@ -37,17 +39,8 @@ import com.example.wastemgmtapp.GetTasksQuery;
 import com.example.wastemgmtapp.GetZoneTrashcansQuery;
 import com.example.wastemgmtapp.R;
 import com.example.wastemgmtapp.Common.SettingsActivity;
-import com.example.wastemgmtapp.UserQuery;
 import com.google.android.material.navigation.NavigationView;
 import com.mapbox.mapboxsdk.Mapbox;
-import com.mapbox.mapboxsdk.camera.CameraPosition;
-import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
-import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.maps.MapView;
-import com.mapbox.mapboxsdk.maps.MapboxMap;
-import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.mapboxsdk.maps.Style;
-
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -66,7 +59,7 @@ public class StaffHomeActivity extends AppCompatActivity {
     TextView textUserName, text_support, trashNumber, taskNumber;
     String TAG = StaffHomeActivity.class.getSimpleName();
     LinearLayout zoneTrashcans, assignedTasks;
-    String zoneID, userID;
+    String companyID, userID;
     CardView cardSettings, cardWaste, cardTrashcans, cardTasks;
     TextView name, location, phoneNumber, createdAt, emailID;
     ProgressBar loading;
@@ -145,6 +138,7 @@ public class StaffHomeActivity extends AppCompatActivity {
         zoneTrashcans.setOnClickListener(view ->{
             Intent intent = new Intent(StaffHomeActivity.this, ZoneTrashcans.class);
             intent.putExtra("id", userID);intent.putExtra("lat", userLat);intent.putExtra("long", userLong);
+            intent.putExtra("companyID", companyID);
             startActivity(intent);
         });
 
@@ -209,7 +203,7 @@ public class StaffHomeActivity extends AppCompatActivity {
         cardTrashcans.setOnClickListener(view -> {
             Intent intent = new Intent(StaffHomeActivity.this, ZoneTrashcans.class);
             intent.putExtra("id", userID);intent.putExtra("lat", userLat);intent.putExtra("long", userLong);
-            intent.putExtra("zoneID", zoneID);
+            intent.putExtra("companyID", companyID);
             startActivity(intent);
         });
 
@@ -249,6 +243,20 @@ public class StaffHomeActivity extends AppCompatActivity {
         });
     }
 
+    @Override
+    public void onRestart() {
+        super.onRestart();
+        //trashNumber.setText(String.valueOf(0));
+        //taskNumber.setText(String.valueOf(0));
+        tasks.clear();
+        //When BACK BUTTON is pressed, the activity on the stack is restarted
+        //Do what you want on the refresh procedure here
+        apolloClient.query(new GetTasksQuery()).enqueue(taskCallback());
+        apolloClient.query(new GetTaskSortedWastesQuery()).enqueue(taskSortedCallback());
+        apolloClient.query(new GetTaskTrashCollectionsQuery()).enqueue(taskCollectCallback());
+        apolloClient.query(new GetZoneTrashcansQuery()).enqueue(trashCallback());
+    }
+
     public ApolloCall.Callback<GetStaffQuery.Data> staffCallback(){
         return new ApolloCall.Callback<GetStaffQuery.Data>() {
             @Override
@@ -261,18 +269,14 @@ public class StaffHomeActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         Log.d(TAG, "staff fetched" + data.staff());
                         textUserName.setText(data.staff().fullName());
-                        if(data.staff().zone() != null){
-                            text_support.setText("Zone: " + data.staff().zone().name());
-                            zoneID = data.staff().zone()._id();
-                        } else{
-                            text_support.setText("Zone: null");
-                        }
+                        text_support.setText("Staff Member");
 
                         locationText = data.staff().creator().location();
                         emailText = data.staff().creator().email();
                         createdAtText = data.staff().creator().createdAt();
                         nameText = data.staff().creator().name();
                         phoneNumberText = data.staff().creator().phoneNumber();
+                        companyID = data.staff().creator()._id();
 
                     });
 
@@ -335,7 +339,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         runOnUiThread(() -> {
                             Log.d(TAG, "tasks fetched: " + data.tasks());
                             try{
-                                if(!TextUtils.isEmpty(userID) && data.tasks().get(0) != null){
+                                if(!TextUtils.isEmpty(userID) && data.tasks().size() != 0){
                                     for(int i=0; i < data.tasks().size(); i++){
                                         if(userID.equals(data.tasks().get(i).staff()._id()) && (data.tasks().get(i).completed() == false)){
                                             tasks.add(data.tasks().get(i));
@@ -548,9 +552,9 @@ public class StaffHomeActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         Log.d(TAG, "trashcans fetched: " + data.trashcans());
                         ArrayList<Object> cans = new ArrayList<>();
-                        if(!TextUtils.isEmpty(zoneID)){
+                        if(!TextUtils.isEmpty(companyID)){
                             for(int i=0; i < data.trashcans().size(); i++){
-                                if(zoneID.equals(data.trashcans().get(i).zone()._id())){
+                                if(companyID.equals(data.trashcans().get(i).zone().creator()._id())){
                                     Log.d(TAG, "onResponse: " + data.trashcans().get(i));
                                     cans.add(data.trashcans().get(i));
                                 }
