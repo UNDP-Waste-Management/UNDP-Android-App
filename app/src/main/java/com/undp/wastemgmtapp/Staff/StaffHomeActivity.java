@@ -5,12 +5,21 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.media.RingtoneManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,16 +32,21 @@ import android.widget.Toast;
 
 import com.apollographql.apollo.ApolloCall;
 import com.apollographql.apollo.ApolloClient;
+import com.apollographql.apollo.ApolloSubscriptionCall;
 import com.apollographql.apollo.api.Error;
 import com.apollographql.apollo.api.Response;
 import com.apollographql.apollo.exception.ApolloException;
+import com.apollographql.apollo.subscription.SubscriptionTransport;
+import com.apollographql.apollo.subscription.WebSocketSubscriptionTransport;
 import com.undp.wastemgmtapp.Common.GPSTracker;
 import com.undp.wastemgmtapp.Common.LogInActivity;
 import com.undp.wastemgmtapp.Common.SessionManager;
+import com.undp.wastemgmtapp.GetCanUpdateSubscription;
 import com.undp.wastemgmtapp.GetStaffQuery;
 import com.undp.wastemgmtapp.GetTaskSortedWastesQuery;
 import com.undp.wastemgmtapp.GetTaskTrashCollectionsQuery;
 import com.undp.wastemgmtapp.GetZoneTrashcansQuery;
+import com.undp.wastemgmtapp.MonitorService;
 import com.undp.wastemgmtapp.R;
 import com.undp.wastemgmtapp.Common.SettingsActivity;
 import com.google.android.material.navigation.NavigationView;
@@ -45,11 +59,12 @@ import java.util.List;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
+import timber.log.Timber;
 
 public class StaffHomeActivity extends AppCompatActivity {
 
     private ActionBarDrawerToggle mToggle;
-    ApolloClient apolloClient;
+    ApolloClient apolloClient, subscriptionClient;
     SessionManager session;
     double userLat, userLong;
     TextView textUserName, text_support, trashNumber, taskNumber;
@@ -64,10 +79,14 @@ public class StaffHomeActivity extends AppCompatActivity {
     int sumTasks = 0;
     ArrayList<Object> tasks = new ArrayList<>();
     ProgressBar fetchLoading;
+    String CHANNEL_ID = "R2";
+    NotificationCompat.Builder notifBuilder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        createNotificationChannel();
+
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token));
         setContentView(R.layout.activity_staff_home);
 
@@ -105,10 +124,17 @@ public class StaffHomeActivity extends AppCompatActivity {
         apolloClient = ApolloClient.builder().okHttpClient(httpClient)
                 .serverUrl("https://waste-mgmt-api.herokuapp.com/graphql")
                 .build();
+        subscriptionClient = ApolloClient.builder()
+                .serverUrl("https://waste-mgmt-api.herokuapp.com/graphql")
+                .subscriptionTransportFactory(
+                        new WebSocketSubscriptionTransport.Factory("wss://waste-mgmt-api.herokuapp.com/subscriptions", httpClient))
+                .okHttpClient(httpClient)
+                .build();
 
         setSupportActionBar(toolbar);
         HashMap<String, String> user = session.getUserDetails();
         userID = user.get(SessionManager.KEY_USERID);
+
 
         Log.d(TAG, "userID: " + userID);
         if(userID == null || TextUtils.isEmpty(userID)){
@@ -118,6 +144,7 @@ public class StaffHomeActivity extends AppCompatActivity {
         }
 
         apolloClient.query(new GetStaffQuery(userID)).enqueue(staffCallback());
+        subscriptionClient.subscribe(new GetCanUpdateSubscription()).execute(canUpdateCallback());
 
         mToggle = new ActionBarDrawerToggle(this, drawerLayout, R.string.open, R.string.close);
 
@@ -242,6 +269,22 @@ public class StaffHomeActivity extends AppCompatActivity {
         });
     }
 
+    private void createNotificationChannel() {
+        // Create the NotificationChannel, but only on API 26+ because
+        // the NotificationChannel class is new and not in the support library
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = getString(R.string.channel_name);
+            String description = "notif channel";
+            int importance = NotificationManager.IMPORTANCE_DEFAULT;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            // Register the channel with the system; you can't change the importance
+            // or other notification behaviors after this
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
     @Override
     public void onRestart() {
         super.onRestart();
@@ -267,7 +310,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     data.staff();
                     runOnUiThread(() -> {
                         fetchLoading.setVisibility(View.GONE);
-                        Log.d(TAG, "staff fetched" + data.staff());
+                        //Log.d(TAG, "staff fetched" + data.staff());
                         textUserName.setText(data.staff().fullName());
                         text_support.setText("Staff Member");
 
@@ -283,7 +326,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     if(response.getErrors() != null){
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in staff query : " + errorMessage );
+                        //Log.e(TAG, "an Error in staff query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "an Error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
@@ -299,7 +342,7 @@ public class StaffHomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull ApolloException e) {
-                Log.e(TAG, "Error", e);
+                //Log.e(TAG, "Error", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
                             "An error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -311,6 +354,7 @@ public class StaffHomeActivity extends AppCompatActivity {
     }
 
 
+
     public ApolloCall.Callback<GetTaskTrashCollectionsQuery.Data> taskCollectCallback(){
         return new ApolloCall.Callback<GetTaskTrashCollectionsQuery.Data>() {
             @Override
@@ -320,7 +364,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                 if(data.taskTrashCollections() == null){
 
                     if(response.getErrors() == null){
-                        Log.e(TAG, "an unknown Error in tasks query : " );
+                        //Log.e(TAG, "an unknown Error in tasks query : " );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "an unknown Error occurred : " , Toast.LENGTH_LONG).show();
@@ -329,7 +373,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     } else{
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
+                        //Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "task collect1: error occurred : " + errorMessage, Toast.LENGTH_SHORT).show();
@@ -338,7 +382,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     }
                 }else{
                     runOnUiThread(() -> {
-                        Log.d(TAG, "tasks collections fetched: " + data.taskTrashCollections());
+                        //Log.d(TAG, "tasks collections fetched: " + data.taskTrashCollections());
                         if(!TextUtils.isEmpty(userID)){
                             for(int i=0; i < data.taskTrashCollections().size(); i++){
                                 if(userID.equals(data.taskTrashCollections().get(i).staff()._id()) && (data.taskTrashCollections().get(i).completed() == false)){
@@ -348,7 +392,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                         }
 
                         sumTasks = sumTasks + tasks.size();
-                        Log.d(TAG, "sumTasks trash collect: " + sumTasks+ "-" +tasks.size());
+                        //Log.d(TAG, "sumTasks trash collect: " + sumTasks+ "-" +tasks.size());
                         taskNumber.setText(String.valueOf(tasks.size()));
 
                     });
@@ -356,7 +400,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     if(response.getErrors() != null){
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
+                        //Log.e(TAG, "an Error in tasks collections query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "task collect2: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
@@ -368,7 +412,7 @@ public class StaffHomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull ApolloException e) {
-                Log.e(TAG, "Error", e);
+                //Log.e(TAG, "Error", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
                             "task collect3: error occurred  : " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -387,7 +431,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                 if(data.taskSortedWastes() == null){
 
                     if(response.getErrors() == null){
-                        Log.e(TAG, "an unknown Error in tasks query : " );
+                        //Log.e(TAG, "an unknown Error in tasks query : " );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "task sorted: error occurred : " , Toast.LENGTH_LONG).show();
@@ -396,7 +440,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     } else{
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
+                        //Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "task sorted: error occurred  : " + errorMessage, Toast.LENGTH_SHORT).show();
@@ -405,7 +449,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     }
                 }else{
                     runOnUiThread(() -> {
-                        Log.d(TAG, "tasks Sorted fetched: " + data.taskSortedWastes());
+                        //Log.d(TAG, "tasks Sorted fetched: " + data.taskSortedWastes());
                         try{
                             if(!TextUtils.isEmpty(userID)){
                                 for(int i=0; i < data.taskSortedWastes().size(); i++){
@@ -429,7 +473,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     if(response.getErrors() != null){
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
+                        //Log.e(TAG, "an Error in tasks Sorted query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "task sorted: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
@@ -441,7 +485,7 @@ public class StaffHomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull ApolloException e) {
-                Log.e(TAG, "Error Sorted", e);
+                //Log.e(TAG, "Error Sorted", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
                             "task sorted: error occurred : " + e.getMessage(), Toast.LENGTH_LONG).show();
@@ -460,7 +504,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                 if(data.trashcans() == null){
 
                     if(response.getErrors() == null){
-                        Log.e(TAG, "an Error in trashcans query : " );
+                        //Log.e(TAG, "an Error in trashcans query : " );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "zone: Error occurred : " , Toast.LENGTH_LONG).show();
@@ -468,7 +512,7 @@ public class StaffHomeActivity extends AppCompatActivity {
                     } else{
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in trashcans query : " + errorMessage );
+                        //Log.e(TAG, "an Error in trashcans query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "zone: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
@@ -477,25 +521,30 @@ public class StaffHomeActivity extends AppCompatActivity {
                     }
                 }else{
                     runOnUiThread(() -> {
-                        Log.d(TAG, "trashcans fetched: " + data.trashcans());
-                        ArrayList<Object> cans = new ArrayList<>();
-                        if(!TextUtils.isEmpty(companyID)){
-                            for(int i=0; i < data.trashcans().size(); i++){
-                                if(companyID.equals(data.trashcans().get(i).zone().creator()._id())){
-                                    Log.d(TAG, "onResponse: " + data.trashcans().get(i));
-                                    cans.add(data.trashcans().get(i));
+                        //Log.d(TAG, "trashcans fetched: " + data.trashcans());
+                        try{
+                            ArrayList<Object> cans = new ArrayList<>();
+                            if(!TextUtils.isEmpty(companyID)){
+                                for(int i=0; i < data.trashcans().size(); i++){
+                                    if(companyID.equals(data.trashcans().get(i).zone().creator()._id())){
+                                        //Log.d(TAG, "onResponse: " + data.trashcans().get(i));
+                                        cans.add(data.trashcans().get(i));
+                                    }
                                 }
                             }
+
+                            trashNumber.setText(String.valueOf(cans.size()));
+                        } catch (Exception e){
+                            e.printStackTrace();
                         }
 
-                        trashNumber.setText(String.valueOf(cans.size()));
 
                     });
 
                     if(response.getErrors() != null){
                         List<Error> error = response.getErrors();
                         String errorMessage = error.get(0).getMessage();
-                        Log.e(TAG, "an Error in staff query : " + errorMessage );
+                        //Log.e(TAG, "an Error in staff query : " + errorMessage );
                         runOnUiThread(() -> {
                             Toast.makeText(StaffHomeActivity.this,
                                     "zone: error occurred : " + errorMessage, Toast.LENGTH_LONG).show();
@@ -507,10 +556,80 @@ public class StaffHomeActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(@NotNull ApolloException e) {
-                Log.e(TAG, "Error", e);
+                //Log.e(TAG, "Error", e);
                 runOnUiThread(() -> {
                     Toast.makeText(StaffHomeActivity.this,
                             "zone: error : " + e.getMessage(), Toast.LENGTH_LONG).show();
+
+                });
+            }
+        };
+    }
+
+    public ApolloSubscriptionCall.Callback<GetCanUpdateSubscription.Data> canUpdateCallback(){
+        return new ApolloSubscriptionCall.Callback<GetCanUpdateSubscription.Data>() {
+
+            @Override
+            public void onResponse(@NotNull Response<GetCanUpdateSubscription.Data> response) {
+                Log.d(TAG, "onResponse: " + response.getData());
+                GetCanUpdateSubscription.Data data = response.getData();
+
+                Log.d(TAG, "data: " + data.updateTrashcan());
+                if(data.updateTrashcan().status() > 90){
+                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(getApplicationContext());
+
+// notificationId is a unique int for each notification that you must define
+                    Intent pendIntent = new Intent(getApplicationContext(), TrashDetailsActivity.class);
+                    pendIntent.putExtra("key", data.updateTrashcan()._id());
+                    pendIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, pendIntent, 0);
+
+                    Uri uri= RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                    notifBuilder = new NotificationCompat.Builder(getApplicationContext(), CHANNEL_ID)
+                            .setSmallIcon(R.drawable.can)
+                            .setContentTitle("Bin Full")
+                            .setContentText("trashcan at "+data.updateTrashcan().trashcanId()+" is ready for collection")
+                            .setAutoCancel(true)
+                            .setContentIntent(pendingIntent)
+                            .setSound(uri)
+                            .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+                    int b = (int)(Math.random()*(10000000-1+1)+1);
+                    notificationManager.notify(b, notifBuilder.build());
+                }
+            }
+
+            @Override
+            public void onFailure(@NotNull ApolloException e) {
+                Log.e(TAG, "onFailure: " + e.getMessage());
+            }
+
+            @Override
+            public void onCompleted() {
+                Timber.e( "Subscription completed");
+                runOnUiThread(() -> {
+                    Toast.makeText(StaffHomeActivity.this,
+                            "Subscription completed", Toast.LENGTH_LONG).show();
+
+                });
+            }
+
+            @Override
+            public void onTerminated() {
+                Timber.e( "Subscription terminated");
+                runOnUiThread(() -> {
+                    Toast.makeText(StaffHomeActivity.this,
+                            "Subscription terminated", Toast.LENGTH_LONG).show();
+
+                });
+            }
+
+            @Override
+            public void onConnected() {
+                Timber.e( "Subscription connected");
+                runOnUiThread(() -> {
+                    Toast.makeText(StaffHomeActivity.this,
+                            "Subscription connected", Toast.LENGTH_LONG).show();
 
                 });
             }

@@ -225,10 +225,6 @@ mutation UpdateSortedWasteNotif($sortedID : UpdateSortedWasteNotificationInput){
 mutation CreateReview($reviewInput : ReviewInput){
     createReview(reviewInput: $reviewInput){
         _id
-        creator{
-            _id
-            fullName
-        }
     }
 }
 
@@ -314,6 +310,7 @@ query taskSortedWaste($taskID : ID!){
                 _id
                 fullName
                 location
+                phoneNumber
             }
             amount
             createdAt
@@ -340,6 +337,7 @@ query taskTrashCollection($taskID : ID!){
                 _id
                 fullName
                 location
+                phoneNumber
             }
             amount
             createdAt
@@ -470,6 +468,14 @@ query GetTrashcan($canID : ID!){
         status
         longitude
         latitude
+    }
+}
+
+subscription getCanUpdate {
+    updateTrashcan{
+        _id
+        trashcanId
+        status
     }
 }
 

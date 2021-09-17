@@ -29,6 +29,7 @@ import com.undp.wastemgmtapp.Common.LogInActivity;
 import com.undp.wastemgmtapp.Common.SessionManager;
 import com.undp.wastemgmtapp.GetCollectionNotifsQuery;
 import com.undp.wastemgmtapp.GetSortedWasteNotifsQuery;
+import com.undp.wastemgmtapp.MonitorService;
 import com.undp.wastemgmtapp.R;
 import com.undp.wastemgmtapp.Common.SettingsActivity;
 import com.undp.wastemgmtapp.UserQuery;
@@ -64,6 +65,7 @@ public class UserHomeActivity extends AppCompatActivity{
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        stopService(new Intent(this, MonitorService.class));
         Mapbox.getInstance(this, getString(R.string.mapbox_access_token));
         setContentView(R.layout.activity_user_home);
 
@@ -352,11 +354,10 @@ public class UserHomeActivity extends AppCompatActivity{
                             ArrayList incomplete = new ArrayList<>();
 
                             for(int i =0; i < data.sortedWasteNotications().size(); i++){
-                                if(!data.sortedWasteNotications().get(i).completed() &&
-                                userID.equals(data.sortedWasteNotications().get(i).creator()._id())){
-                                    complete.add(data.sortedWasteNotications().get(i));
-                                } else {
+                                if(!data.sortedWasteNotications().get(i).completed() && userID.equals(data.sortedWasteNotications().get(i).creator()._id())){
                                     incomplete.add(data.sortedWasteNotications().get(i));
+                                } else if (data.sortedWasteNotications().get(i).completed() && userID.equals(data.sortedWasteNotications().get(i).creator()._id())) {
+                                    complete.add(data.sortedWasteNotications().get(i));
                                 }
                             }
                             int completeSize = complete.size();
@@ -428,9 +429,12 @@ public class UserHomeActivity extends AppCompatActivity{
                             for(int i =0; i < data.trashCollectionNotications().size(); i++){
                                 if(!data.trashCollectionNotications().get(i).completed() &&
                                         userID.equals(data.trashCollectionNotications().get(i).creator()._id())){
-                                    complete.add(data.trashCollectionNotications().get(i));
-                                } else {
+                                    Log.d(TAG, "it's equal..." + "-" + data.trashCollectionNotications().get(i).creator()._id()
+                                    +"-"+userID);
                                     incomplete.add(data.trashCollectionNotications().get(i));
+                                } else if(data.trashCollectionNotications().get(i).completed() &&
+                                        userID.equals(data.trashCollectionNotications().get(i).creator()._id())) {
+                                    complete.add(data.trashCollectionNotications().get(i));
                                 }
                             }
                             int completeSize = complete.size();
