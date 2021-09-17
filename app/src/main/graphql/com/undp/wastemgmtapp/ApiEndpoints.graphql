@@ -267,6 +267,7 @@ query getTaskSortedWastes {
                 fullName
                 location
             }
+            location
             amount
             createdAt
         }
@@ -289,6 +290,7 @@ query getTaskTrashCollections {
                 fullName
                 location
             }
+            location
             amount
             createdAt
         }
@@ -355,36 +357,6 @@ query taskTrashCollection($taskID : ID!){
 }
 
 
-
-subscription CollectionNotifAdded{
-    noficationtTrashCollectionAdded{
-        _id
-        status
-        institution{
-            _id
-            name
-        }
-        creator{
-            _id
-        }
-        createdAt
-    }
-}
-
-subscription SortedNotifAdded{
-    noficationtSortedWasteAdded{
-        _id
-        status
-        institution{
-            _id
-            name
-        }
-        creator{
-            _id
-        }
-        createdAt
-    }
-}
 
 query GetZoneTrashcans{
     trashcans{
@@ -479,5 +451,78 @@ subscription getCanUpdate {
     }
 }
 
+
+subscription taskSortedAdded {
+    taskSortedWasteAdded{
+        _id
+        sortedWaste{
+            _id
+        }
+        staff{
+            _id
+        }
+        completed
+    }
+}
+
+subscription taskCollectionAdded {
+    taskTrashCollectionAdded{
+        _id
+        trashcollection{
+            _id
+        }
+        staff{
+            _id
+        }
+        completed
+    }
+}
+
+subscription NotifCollectionAdded {
+    noficationtTrashCollectionAdded{
+        _id
+        status
+        completed
+        trashcollection{
+            _id
+            amount
+            location
+            createdAt
+            typeOfWaste
+        }
+        institution{
+            _id
+            name
+        }
+        creator{
+            _id
+        }
+        createdAt
+    }
+}
+
+subscription NotifSortedAdded {
+    noficationtSortedWasteAdded{
+        _id
+        status
+        completed
+        sortedWaste{
+            _id
+            amount
+            location
+            createdAt
+            typeOfWaste
+        }
+        institution{
+            _id
+            name
+        }
+        creator{
+            _id
+        }
+        createdAt
+
+    }
+}
 
 
