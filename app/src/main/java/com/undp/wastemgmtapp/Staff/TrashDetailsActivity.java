@@ -150,21 +150,22 @@ public class TrashDetailsActivity extends AppCompatActivity {
                         errorText.setVisibility(View.GONE);
                         canNameText.setText(data.trashcan().trashcanId());
                         zoneNameText.setText(data.trashcan().zone().name());
-                        levelText.setText(String.valueOf(data.trashcan().status()));
+
+                        double state = 100 - Double.valueOf(data.trashcan().status());
+                        levelText.setText(String.valueOf(state));
                         longitude = data.trashcan().longitude();
                         latitude = data.trashcan().latitude();
 
                         Log.d(TAG, "latitude: " + latitude + "-" + "longitude: " + longitude);
 
-                        Double d = Double.valueOf(data.trashcan().status());
-                        int value = d.intValue();
-                        if(value > 90){
+                        double d = 100 - Double.valueOf(data.trashcan().status());
+                        if(d > 90){
                             Drawable progressDrawable = canLevel.getProgressDrawable().mutate();
                             progressDrawable.setColorFilter(Color.RED, android.graphics.PorterDuff.Mode.SRC_IN);
                             canLevel.setProgressDrawable(progressDrawable);
                         }
 
-                        canLevel.setProgress(value);
+                        canLevel.setProgress((int)d);
 
                         position = new CameraPosition.Builder()
                                 .target(new LatLng(latitude, longitude)).zoom(14).tilt(20)
